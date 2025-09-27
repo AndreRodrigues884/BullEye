@@ -1,0 +1,116 @@
+
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Frontend Vue.js
+  frontend:
+    container_name: bulleye-frontend
+    build:
+      context: ./bulleye_front
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:5000/api
+    depends_on:
+      - backend
+
+  # Backend Node.js API
+  backend:
+    container_name: bulleye-backend
+    build:
+      context: ./buleye_back
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://bulleye_user:bulleye_pass@postgres:5432/bulleye_db
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your_jwt_secret_change_in_production
+    depends_on:
+      - postgres
+      - redis
+
+  # ML Service Python (pode comentar se der problema)
+  ml-service:
+    container_name: bulleye-ml
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./ml-service:/app
+      - ./data:/app/data
+    environment:
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql://bulleye_user:bulleye_pass@postgres:5432/bulleye_db
+    depends_on:
+      - postgres
+    profiles:
+      - ml  # Use: docker-compose --profile ml up
+
+  # PostgreSQL Database
+  postgres:
+    container_name: bulleye-postgres
+    image: timescale/timescaledb:latest-pg14
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=bulleye_db
+      - POSTGRES_USER=bulleye_user
+      - POSTGRES_PASSWORD=bulleye_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bulleye_user -d bulleye_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Cache
+  redis:
+    container_name: bulleye-redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  # Nginx Reverse Proxy (para produção)
+  nginx:
+    container_name: bulleye-nginx
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: bulleye-network

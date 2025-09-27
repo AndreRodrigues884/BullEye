@@ -1,0 +1,50 @@
+name: Security Scans
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
+
+jobs:
+  dependency-check:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        path: [frontend, backend, ml-service]
+        
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run dependency check
+        if: matrix.path != 'ml-service'
+        run: |
+          cd ${{ matrix.path }}
+          npm audit --audit-level moderate
+          
+      - name: Run Python security check
+        if: matrix.path == 'ml-service'
+        run: |
+          cd ${{ matrix.path }}
+          pip install safety
+          safety check -r requirements.txt
+
+  docker-security:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
