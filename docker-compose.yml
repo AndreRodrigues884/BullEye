@@ -1,4 +1,3 @@
-
 # docker-compose.yml
 version: '3.8'
 
@@ -7,7 +6,7 @@ services:
   frontend:
     container_name: bulleye-frontend
     build:
-      context: ./bulleye_front
+      context: ./frontend
       dockerfile: Dockerfile
       target: development
     ports:
@@ -25,7 +24,7 @@ services:
   backend:
     container_name: bulleye-backend
     build:
-      context: ./buleye_back
+      context: ./backend
       dockerfile: Dockerfile
       target: development
     ports:
@@ -35,7 +34,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - DATABASE_URL=postgresql://bulleye_user:bulleye_pass@postgres:5432/bulleye_db
+      - DATABASE_URL=postgresql://postgres:Cadurodrigues4@postgres:5432/bulleye_db
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=your_jwt_secret_change_in_production
     depends_on:
@@ -56,11 +55,9 @@ services:
       - ./data:/app/data
     environment:
       - PYTHONPATH=/app
-      - DATABASE_URL=postgresql://bulleye_user:bulleye_pass@postgres:5432/bulleye_db
+      - DATABASE_URL=postgresql://postgres:Cadurodrigues4@postgres:5432/bulleye_db
     depends_on:
       - postgres
-    profiles:
-      - ml  # Use: docker-compose --profile ml up
 
   # PostgreSQL Database
   postgres:
@@ -70,8 +67,8 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_DB=bulleye_db
-      - POSTGRES_USER=bulleye_user
-      - POSTGRES_PASSWORD=bulleye_pass
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Cadurodrigues4
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
